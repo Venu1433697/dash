@@ -49,4 +49,3 @@ jobs:
             # Start the Dash app using Gunicorn
             nohup gunicorn app:server --bind 0.0.0.0:80 &
           EOF
-          
