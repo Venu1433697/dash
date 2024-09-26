@@ -1,28 +1,52 @@
-name: Django CI
+name: Dash App Deployment
 
 on:
   push:
-    branches: [ "dev" ]
+    branches:
+      - main  # Run this workflow on pushes to the main branch
 
 jobs:
-  build:
-
+  deploy:
     runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 4
-      matrix:
-        python-version: [3.9]
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    - name: Run Tests
-      run: |
-        python manage.py test
+      # Checkout the repo
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      # Install dependencies from requirements.txt
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Build and package the application
+      - name: Build Dash Application
+        run: |
+          echo "Building the Dash app"
+          # Optional: you could add steps to test or lint your code here
+
+      # Deploy the app to the EC2 instance using SSH
+      - name: Deploy to EC2
+        env:
+          EC2_USER: ${{ secrets.SSH_USER }}
+          EC2_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          echo "Starting deployment"
+          # Copy the code to the EC2 instance
+          scp -i ~/.ssh/id_rsa -r ./* $EC2_USER@$EC2_HOST:/home/ubuntu/dash_app
+
+          # SSH into the instance and start the app with Gunicorn
+          ssh -i ~/.ssh/id_rsa $EC2_USER@$EC2_HOST << EOF
+            cd /home/ubuntu/dash_app
+            pip install -r requirements.txt
+            # Start the Dash app using Gunicorn
+            nohup gunicorn app:server --bind 0.0.0.0:80 &
+          EOF
+          
